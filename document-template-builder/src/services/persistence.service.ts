@@ -54,8 +54,7 @@ function isTemplateDocument(
         if (
             !isRecord(block) ||
             typeof block['id'] !== 'string' ||
-            block['id'].length === 0 ||
-            typeof block['text'] !== 'string'
+            block['id'].length === 0
         ) {
             return false;
         }
@@ -66,16 +65,98 @@ function isTemplateDocument(
 
         ids.add(block['id']);
 
-        if (block['type'] === 'paragraph') {
+        if (block['type'] === 'page-break') {
             return true;
+        }
+
+        if (block['type'] === 'paragraph') {
+            return typeof block['text'] === 'string';
         }
 
         if (block['type'] === 'heading') {
             return (
-                block['level'] === 1 ||
-                block['level'] === 2 ||
-                block['level'] === 3
+                typeof block['text'] === 'string' &&
+                (
+                    block['level'] === 1 ||
+                    block['level'] === 2 ||
+                    block['level'] === 3
+                )
             );
+        }
+
+        if (block['type'] === 'image') {
+            const src = block['src'];
+            const width = block['widthPercent'];
+
+            return (
+                typeof src === 'string' &&
+                src.length <= 700_000 &&
+                /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/
+                    .test(src) &&
+                typeof block['alt'] === 'string' &&
+                typeof width === 'number' &&
+                Number.isFinite(width) &&
+                width >= 10 &&
+                width <= 100
+            );
+        }
+
+        if (block['type'] === 'table') {
+            const columns = block['columns'];
+            const rows = block['rows'];
+
+            if (
+                typeof block['headerRow'] !== 'boolean' ||
+                !Array.isArray(columns) ||
+                columns.length < 1 ||
+                columns.length > 10 ||
+                !Array.isArray(rows) ||
+                rows.length < 1 ||
+                rows.length > 100
+            ) {
+                return false;
+            }
+
+            const columnIds = new Set<string>();
+
+            const validColumns = columns.every((column: unknown) => {
+                if (
+                    !isRecord(column) ||
+                    typeof column['id'] !== 'string' ||
+                    column['id'].length === 0 ||
+                    columnIds.has(column['id'])
+                ) {
+                    return false;
+                }
+
+                columnIds.add(column['id']);
+                return true;
+            });
+
+            if (!validColumns) {
+                return false;
+            }
+
+            const rowIds = new Set<string>();
+
+            return rows.every((row: unknown) => {
+                if (
+                    !isRecord(row) ||
+                    typeof row['id'] !== 'string' ||
+                    row['id'].length === 0 ||
+                    rowIds.has(row['id']) ||
+                    !Array.isArray(row['cells']) ||
+                    row['cells'].length !== columns.length
+                ) {
+                    return false;
+                }
+
+                rowIds.add(row['id']);
+
+                return row['cells'].every(
+                    (cell: unknown) => typeof cell === 'string'
+                );
+            });
         }
 
         return false;
@@ -103,8 +184,6 @@ export class PersistenceService {
                 'Il documento corrente non ha una struttura valida.'
             );
         }
-
-        document.schemaVersion = document.schemaVersion++;
 
         const json = JSON.stringify(document);
 

@@ -64,28 +64,6 @@ select {
   box-shadow: 0 2px 10px #0002;
 }
 
-.paragraph-editor {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 100px;
-  padding: 4px;
-  border: 1px dashed transparent;
-  border-radius: 3px;
-  background: transparent;
-  color: #111827;
-  font: 16px/1.5 Arial, sans-serif;
-  resize: vertical;
-}
-
-.paragraph-editor:hover {
-  border-color: #cbd5e1;
-}
-
-.paragraph-editor:focus {
-  border-color: #2563eb;
-  outline: 2px solid #dbeafe;
-}
 
 .development-note {
   max-width: 650px;
@@ -210,38 +188,166 @@ select {
   padding: 4px 6px;
 }
 
-.heading-editor {
+.image-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.image-controls label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.image-controls input[type="text"] {
+  width: 260px;
+  max-width: 100%;
+}
+
+.document-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.table-controls button,
+.editable-table button {
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.table-controls button:disabled,
+.editable-table button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.table-controls button:focus-visible,
+.editable-table button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.editable-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.editable-table caption {
+  margin-bottom: 8px;
+  text-align: left;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.editable-table th,
+.editable-table td {
+  min-width: 100px;
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  vertical-align: top;
+}
+
+.column-controls th {
+  background: #f1f5f9;
+  font-size: 12px;
+}
+
+.column-controls span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.editable-table textarea {
   display: block;
   box-sizing: border-box;
   width: 100%;
-  padding: 4px;
-  border: 1px dashed transparent;
-  border-radius: 3px;
+  padding: 6px;
+  border: 1px solid transparent;
   background: transparent;
-  color: #111827;
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  line-height: 1.25;
+  color: inherit;
+  font: inherit;
   resize: vertical;
 }
 
-.heading-editor:hover {
-  border-color: #cbd5e1;
+.editable-table textarea:focus {
+  outline: 2px solid #2563eb;
 }
 
-.heading-editor:focus {
-  border-color: #2563eb;
-  outline: 2px solid #dbeafe;
+.table-header-row {
+  background: #eff6ff;
+  font-weight: 700;
 }
 
-.heading-level-1 {
-  font-size: 32px;
+.row-actions {
+  width: 110px;
 }
 
-.heading-level-2 {
-  font-size: 24px;
-}
-
-.heading-level-3 {
+.block-toolbar .drag-handle {
+  padding: 4px 10px;
+  color: #475569;
   font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.block-toolbar .drag-handle:active {
+  cursor: grabbing;
+}
+
+.document-block.cdk-drag-preview {
+  box-sizing: border-box;
+  background: white;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px #0003;
+}
+
+.document-block.cdk-drag-placeholder {
+  opacity: 0.2;
+}
+
+.document-block.cdk-drag-animating {
+  transition: transform 180ms ease;
+}
+
+.document-page.cdk-drop-list-dragging .document-block:not(.cdk-drag-placeholder) {
+  transition: transform 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .document-block.cdk-drag-animating,
+  .document-page.cdk-drop-list-dragging .document-block:not(.cdk-drag-placeholder) {
+    transition: none;
+  }
+}
+
+.page-break-marker {
+  padding: 12px;
+  border-top: 2px dashed #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  text-align: center;
 }

@@ -5,6 +5,7 @@ import {
   HeadingLevel,
   PageFormat,
   PageOrientation,
+  TableBlock,
   TemplateDocument,
 } from '../models/document.model';
 
@@ -225,7 +226,8 @@ export class DocumentStore {
       ...document,
 
       blocks: document.blocks.map((block) =>
-        block.id === id
+        block.id === id &&
+          (block.type === 'paragraph' || block.type === 'heading')
           ? { ...block, text }
           : block
       ),
@@ -244,5 +246,275 @@ export class DocumentStore {
     }));
   }
 
+  addImage(src: string): void {
+    this.commit((document) => ({
+      ...document,
 
+      blocks: [
+        ...document.blocks,
+        {
+          id: crypto.randomUUID(),
+          type: 'image',
+          src,
+          alt: '',
+          widthPercent: 100,
+        },
+      ],
+    }));
+  }
+
+  updateImageAlt(id: string, alt: string): void {
+    this.commit((document) => ({
+      ...document,
+
+      blocks: document.blocks.map((block) =>
+        block.id === id && block.type === 'image'
+          ? { ...block, alt }
+          : block
+      ),
+    }));
+  }
+
+  setImageWidth(id: string, widthPercent: number): void {
+    if (
+      !Number.isFinite(widthPercent) ||
+      widthPercent < 10 ||
+      widthPercent > 100
+    ) {
+      return;
+    }
+
+    this.commit((document) => ({
+      ...document,
+
+      blocks: document.blocks.map((block) =>
+        block.id === id && block.type === 'image'
+          ? { ...block, widthPercent }
+          : block
+      ),
+    }));
+  }
+
+  addTable(): void {
+    this.commit((document) => ({
+      ...document,
+
+      blocks: [
+        ...document.blocks,
+        {
+          id: crypto.randomUUID(),
+          type: 'table',
+          headerRow: true,
+
+          columns: [
+            { id: crypto.randomUUID() },
+            { id: crypto.randomUUID() },
+          ],
+
+          rows: [
+            {
+              id: crypto.randomUUID(),
+              cells: ['Descrizione', 'Quantità'],
+            },
+            {
+              id: crypto.randomUUID(),
+              cells: ['', ''],
+            },
+          ],
+        },
+      ],
+    }));
+  }
+
+  private updateTable(
+    id: string,
+    change: (table: TableBlock) => TableBlock
+  ): void {
+    this.commit((document) => ({
+      ...document,
+
+      blocks: document.blocks.map((block) =>
+        block.id === id && block.type === 'table'
+          ? change(block)
+          : block
+      ),
+    }));
+  }
+
+  updateTableCell(
+    tableId: string,
+    rowId: string,
+    columnIndex: number,
+    text: string
+  ): void {
+    this.updateTable(tableId, (table) => {
+      if (
+        !Number.isInteger(columnIndex) ||
+        columnIndex < 0 ||
+        columnIndex >= table.columns.length
+      ) {
+        return table;
+      }
+
+      return {
+        ...table,
+
+        rows: table.rows.map((row) =>
+          row.id === rowId
+            ? {
+              ...row,
+              cells: row.cells.map((cell, index) =>
+                index === columnIndex ? text : cell
+              ),
+            }
+            : row
+        ),
+      };
+    });
+  }
+
+  addTableRow(id: string): void {
+    this.updateTable(id, (table) => {
+      if (table.rows.length >= 100) {
+        return table;
+      }
+
+      return {
+        ...table,
+
+        rows: [
+          ...table.rows,
+          {
+            id: crypto.randomUUID(),
+            cells: table.columns.map(() => ''),
+          },
+        ],
+      };
+    });
+  }
+
+  removeTableRow(id: string, rowId: string): void {
+    this.updateTable(id, (table) => {
+      if (table.rows.length <= 1) {
+        return table;
+      }
+
+      return {
+        ...table,
+        rows: table.rows.filter((row) => row.id !== rowId),
+      };
+    });
+  }
+
+  addTableColumn(id: string): void {
+    this.updateTable(id, (table) => {
+      if (table.columns.length >= 10) {
+        return table;
+      }
+
+      return {
+        ...table,
+
+        columns: [
+          ...table.columns,
+          { id: crypto.randomUUID() },
+        ],
+
+        rows: table.rows.map((row) => ({
+          ...row,
+          cells: [...row.cells, ''],
+        })),
+      };
+    });
+  }
+
+  removeTableColumn(id: string, columnIndex: number): void {
+    this.updateTable(id, (table) => {
+      if (
+        table.columns.length <= 1 ||
+        !Number.isInteger(columnIndex) ||
+        columnIndex < 0 ||
+        columnIndex >= table.columns.length
+      ) {
+        return table;
+      }
+
+      return {
+        ...table,
+
+        columns: table.columns.filter(
+          (_, index) => index !== columnIndex
+        ),
+
+        rows: table.rows.map((row) => ({
+          ...row,
+          cells: row.cells.filter(
+            (_, index) => index !== columnIndex
+          ),
+        })),
+      };
+    });
+  }
+
+  setTableHeader(id: string, headerRow: boolean): void {
+    this.updateTable(id, (table) => ({
+      ...table,
+      headerRow,
+    }));
+  }
+
+
+  reorderBlock(id: string, targetIndex: number): void {
+    this.commit((document) => {
+      const sourceIndex = document.blocks.findIndex(
+        (block) => block.id === id
+      );
+
+      if (
+        sourceIndex === -1 ||
+        !Number.isInteger(targetIndex) ||
+        targetIndex < 0 ||
+        targetIndex >= document.blocks.length ||
+        sourceIndex === targetIndex
+      ) {
+        return document;
+      }
+
+      const blocks = [...document.blocks];
+      const [block] = blocks.splice(sourceIndex, 1);
+
+      if (!block) {
+        return document;
+      }
+
+      blocks.splice(targetIndex, 0, block);
+
+      return {
+        ...document,
+        blocks,
+      };
+    });
+  }
+
+addPageBreak(): void {
+  this.commit((document) => ({
+    ...document,
+
+    blocks: [
+      ...document.blocks,
+      {
+        id: crypto.randomUUID(),
+        type: 'page-break',
+      },
+    ],
+  }));
+
+  console.log(
+    'Ordine dei blocchi:',
+    this.document().blocks.map((block) => ({
+      id: block.id,
+      type: block.type,
+    }))
+  );
+}
 }

@@ -23,10 +23,43 @@ export interface HeadingBlock {
   level: HeadingLevel;
 }
 
+export interface ImageBlock {
+  id: string;
+  type: 'image';
+  src: string;
+  alt: string;
+  widthPercent: number;
+}
+
+export interface TableColumn {
+  id: string;
+}
+
+export interface TableRow {
+  id: string;
+  cells: string[];
+}
+
+export interface TableBlock {
+  id: string;
+  type: 'table';
+  headerRow: boolean;
+  columns: TableColumn[];
+  rows: TableRow[];
+}
+
+export interface PageBreakBlock {
+  id: string;
+  type: 'page-break';
+}
+
 // Un blocco può essere un paragrafo oppure un titolo
 export type DocumentBlock =
   | ParagraphBlock
   | HeadingBlock
+  | ImageBlock
+  | TableBlock
+  | PageBreakBlock
 
 export interface TemplateDocument {
   schemaVersion: number;

@@ -7,10 +7,40 @@ import {
 
 import { DocumentStore } from '../../services/document-store.service';
 import { PersistenceService } from '../../services/persistence.service';
+import { ParagraphBlockComponent } from '../blocks/paragraph-block/paragraph-block.component';
+import { HeadingBlockComponent } from '../blocks/heading-block/heading-block.component';
+import { ImageBlockComponent } from '../blocks/image-block/image-block.component';
+import { TableBlockComponent } from '../blocks/table-block/table-block.component';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragHandle,
+  CdkDropList,
+} from '@angular/cdk/drag-drop';
+import { CdkScrollable } from '@angular/cdk/scrolling';
+import {
+  DocumentBlock,
+} from '../../models/document.model';
+import {
+  DocumentPreviewComponent,
+} from '../preview/document-preview.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
+
+  imports: [
+    ParagraphBlockComponent,
+    HeadingBlockComponent,
+    ImageBlockComponent,
+    TableBlockComponent,
+    DocumentPreviewComponent,
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
+    CdkScrollable,
+  ],
+
   templateUrl: './editor.component.html',
   styleUrl: './editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -49,13 +79,6 @@ export class EditorComponent {
   saveProject(): void {
     try {
 
-      if (this.persistence.existDocument(this.store.document())) {
-        this.statusMessage.set(
-          'Esiste già un progetto con questo nome'
-        );
-        return;
-      }
-
       this.persistence.save(this.store.document());
 
       this.statusMessage.set(
@@ -82,7 +105,6 @@ export class EditorComponent {
 
         return;
       }
-
 
       const confirmed = window.confirm(
         'Ripristinare il progetto salvato? ' +
@@ -113,6 +135,114 @@ export class EditorComponent {
     if (level === 1 || level === 2 || level === 3) {
       this.store.setHeadingLevel(id, level);
     }
+  }
+
+  readonly imageLoading = signal(false);
+
+  async uploadImage(input: HTMLInputElement): Promise<void> {
+    const file = input.files?.[0];
+
+    if (!file || this.imageLoading()) {
+      return;
+    }
+
+    const allowedTypes = [
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+    ];
+
+    // Limite iniziale del nostro progetto: 500 KiB per immagine.
+    const maxBytes = 500 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+      this.statusMessage.set(
+        'Seleziona un’immagine PNG, JPEG o WebP.'
+      );
+      input.value = '';
+      return;
+    }
+
+    if (file.size > maxBytes) {
+      this.statusMessage.set(
+        'Immagine troppo grande: massimo 500 KiB.'
+      );
+      input.value = '';
+      return;
+    }
+
+    this.imageLoading.set(true);
+
+    try {
+      const src = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            resolve(reader.result);
+          } else {
+            reject(new Error('Risultato di lettura non valido.'));
+          }
+        };
+
+        reader.onerror = () => {
+          reject(reader.error ?? new Error('Lettura non riuscita.'));
+        };
+
+        reader.onabort = () => {
+          reject(new Error('Lettura annullata.'));
+        };
+
+        reader.readAsDataURL(file);
+      });
+
+      // Verifica che il browser riesca effettivamente a decodificarla.
+      const image = new Image();
+      image.src = src;
+
+      await image.decode();
+
+      // Limite progettuale per evitare immagini enormi da renderizzare.
+      if (
+        image.naturalWidth === 0 ||
+        image.naturalHeight === 0 ||
+        image.naturalWidth * image.naturalHeight > 16_000_000
+      ) {
+        throw new Error(
+          'Dimensioni non supportate: massimo 16 milioni di pixel.'
+        );
+      }
+
+      this.store.addImage(src);
+
+      this.statusMessage.set(
+        'Immagine aggiunta. Inserisci una descrizione alternativa.'
+      );
+    } catch (error) {
+      console.error('Caricamento immagine non riuscito:', error);
+
+      this.statusMessage.set(
+        'Impossibile caricare l’immagine. Verifica formato e dimensioni.'
+      );
+    } finally {
+      this.imageLoading.set(false);
+      input.value = '';
+    }
+  }
+
+  dropBlock(
+    event: CdkDragDrop<DocumentBlock[], DocumentBlock[], string>
+  ): void {
+    if (event.previousContainer !== event.container ||
+      !event.isPointerOverContainer
+    ) {
+      return;
+    }
+
+    this.store.reorderBlock(
+      event.item.data,
+      event.currentIndex
+    );
   }
 
 }

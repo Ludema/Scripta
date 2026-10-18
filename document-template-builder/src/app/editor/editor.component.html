@@ -1,5 +1,5 @@
 <header class="toolbar">
-  <strong class="brand">document-template-builder</strong>
+  <strong class="brand">Scripta</strong>
 
   <label>
     Titolo del documento
@@ -56,6 +56,20 @@
     <button type="button" (click)="store.addHeading()">
       Nuovo titolo
     </button>
+
+    <input #imageFile type="file" accept="image/png,image/jpeg,image/webp" hidden (change)="uploadImage(imageFile)" />
+
+    <button type="button" [disabled]="imageLoading()" (click)="imageFile.click()">
+      {{ imageLoading() ? 'Caricamento…' : 'Aggiungi immagine' }}
+    </button>
+
+    <button type="button" (click)="store.addTable()">
+      Nuova tabella
+    </button>
+
+    <button type="button" (click)="store.addPageBreak()">
+      Interruzione di pagina
+    </button>
   </div>
 </header>
 
@@ -63,7 +77,7 @@
   {{ statusMessage() }}
 </p>
 
-<main class="workspace" aria-label="Area documento">
+<main class="workspace" aria-label="Area documento" cdkScrollable>
   <div class="page-container">
     <div class="page-info">
       {{ store.pageSize().width }} ×
@@ -71,8 +85,10 @@
     </div>
 
 
-    <section class="document-page" aria-label="Foglio del documento" [style.width.mm]="store.pageSize().width"
-      [style.min-height.mm]="store.pageSize().height" [style.padding.mm]="store.document().settings.marginMm">
+    <section class="document-page" aria-label="Foglio del documento" cdkDropList cdkDropListOrientation="vertical"
+      [cdkDropListData]="store.document().blocks" (cdkDropListDropped)="dropBlock($event)"
+      [style.width.mm]="store.pageSize().width" [style.min-height.mm]="store.pageSize().height"
+      [style.padding.mm]="store.document().settings.marginMm">
       @for (
       block of store.document().blocks;
       track block.id;
@@ -80,51 +96,93 @@
       let first = $first;
       let last = $last
       ) {
-      <div class="document-block">
-        <div class="block-toolbar">
-          <span class="block-label">
-            {{ block.type === 'heading' ? 'Titolo' : 'Paragrafo' }}
-            {{ index + 1 }}
-          </span>
+      <div class="document-block" cdkDrag cdkDragLockAxis="y" [cdkDragData]="block.id">
+        <button type="button" class="drag-handle" cdkDragHandle title="Trascina per spostare il blocco"
+          [attr.aria-label]="
+    'Trascina il blocco ' + (index + 1) +
+    '. In alternativa usa i pulsanti Su e Giù.'
+  ">
+          <div class="block-toolbar">
+            <span class="block-label">
+              @switch (block.type) {
+              @case ('heading') {
+              Titolo
+              }
+              @case ('paragraph') {
+              Paragrafo
+              }
+              @case ('image') {
+              Immagine
+              }
+              @case ('table') {
+              Tabella
+              }
+              @case ('page-break') {
+              Interruzione di pagina
+              }
+              }
 
-          @if (block.type === 'heading') {
-          <label class="heading-level-control">
-            Livello
+              {{ index + 1 }}
+            </span>
 
-            <select #levelInput [value]="block.level" (change)="changeHeadingLevel(block.id, levelInput.value)">
-              <option value="1">H1</option>
-              <option value="2">H2</option>
-              <option value="3">H3</option>
-            </select>
-          </label>
-          }
 
-          <button type="button" [disabled]="first" [attr.aria-label]="'Sposta su il blocco ' + (index + 1)"
-            (click)="store.moveParagraph(block.id, -1)">
-            Su
-          </button>
+            @if (block.type === 'heading') {
+            <label class="heading-level-control">
+              Livello
 
-          <button type="button" [disabled]="last" [attr.aria-label]="'Sposta giù il blocco ' + (index + 1)"
-            (click)="store.moveParagraph(block.id, 1)">
-            Giù
-          </button>
+              <select #levelInput [value]="block.level" (change)="changeHeadingLevel(block.id, levelInput.value)">
+                <option value="1">H1</option>
+                <option value="2">H2</option>
+                <option value="3">H3</option>
+              </select>
+            </label>
+            }
 
-          <button type="button" class="delete-button" [attr.aria-label]="'Elimina il blocco ' + (index + 1)"
-            (click)="store.removeParagraph(block.id)">
-            Elimina
-          </button>
-        </div>
+            <button type="button" [disabled]="first" [attr.aria-label]="'Sposta su il blocco ' + (index + 1)"
+              (click)="store.moveParagraph(block.id, -1)">
+              Su
+            </button>
+
+            <button type="button" [disabled]="last" [attr.aria-label]="'Sposta giù il blocco ' + (index + 1)"
+              (click)="store.moveParagraph(block.id, 1)">
+              Giù
+            </button>
+
+            <button type="button" class="delete-button" [attr.aria-label]="'Elimina il blocco ' + (index + 1)"
+              (click)="store.removeParagraph(block.id)">
+              Elimina
+            </button>
+          </div>
+        </button>
 
         @if (block.type === 'heading') {
-        <textarea #headingInput class="heading-editor" rows="2" spellcheck="true" placeholder="Scrivi il titolo..."
-          [class.heading-level-1]="block.level === 1" [class.heading-level-2]="block.level === 2"
-          [class.heading-level-3]="block.level === 3" [attr.aria-label]="'Testo del titolo ' + (index + 1)"
-          [value]="block.text" (input)="store.updateBlockText(block.id, headingInput.value)"></textarea>
-        } @else {
-        <textarea #textInput class="paragraph-editor" rows="5" spellcheck="true"
-          placeholder="Scrivi il testo del paragrafo..." [attr.aria-label]="'Testo del paragrafo ' + (index + 1)"
-          [value]="block.text" (input)="store.updateBlockText(block.id, textInput.value)"></textarea>
+        <heading-block [block]="block" [label]="'Testo del titolo ' + (index + 1)"
+          (textChanged)="store.updateBlockText(block.id, $event)"></heading-block>
+        } @else if (block.type === 'paragraph') {
+        <paragraph-block [block]="block" [label]="'Testo del paragrafo ' + (index + 1)"
+          (textChanged)="store.updateBlockText(block.id, $event)"></paragraph-block>
         }
+
+        @else if (block.type === 'image') {
+        <image-block [block]="block" (altChanged)="store.updateImageAlt(block.id, $event)"
+          (widthChanged)="store.setImageWidth(block.id, $event)"></image-block>
+        } @else if (block.type === 'table') {
+        <table-block [block]="block" [label]="'Tabella modificabile ' + (index + 1)" (cellChanged)="store.updateTableCell(
+      block.id,
+      $event.rowId,
+      $event.columnIndex,
+      $event.text
+    )" (rowAdded)="store.addTableRow(block.id)" (rowRemoved)="store.removeTableRow(block.id, $event)"
+          (columnAdded)="store.addTableColumn(block.id)" (columnRemoved)="store.removeTableColumn(block.id, $event)"
+          (headerChanged)="store.setTableHeader(block.id, $event)"></table-block>
+        } @else if (block.type === 'page-break') {
+        <div class="page-break-marker">
+          Il contenuto successivo inizierà su un nuovo foglio.
+        </div>
+        }
+
+
+
       </div>
       } @empty {
       <div class="empty-document">
@@ -141,10 +199,14 @@
       }
     </section>
 
+    <h2 class="preview-title">Anteprima impaginata</h2>
+
+    <document-preview [document]="store.document()" [pageWidthMm]="store.pageSize().width"
+      [pageHeightMm]="store.pageSize().height"></document-preview>
+
     <p class="development-note">
       Salvataggio manuale nel browser.
       Paginazione automatica ed esportazione non sono ancora attive.
     </p>
   </div>
 </main>
-``
