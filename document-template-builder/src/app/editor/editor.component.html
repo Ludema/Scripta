@@ -1,0 +1,150 @@
+<header class="toolbar">
+  <strong class="brand">document-template-builder</strong>
+
+  <label>
+    Titolo del documento
+    <input #titleInput type="text" [value]="store.document().title" (input)="store.setTitle(titleInput.value)" />
+  </label>
+
+  <label>
+    Formato
+
+    <select #formatInput [value]="store.document().settings.format" (change)="changeFormat(formatInput.value)">
+      <option value="a4">A4</option>
+      <option value="a5">A5</option>
+    </select>
+  </label>
+
+  <label>
+    Orientamento
+
+    <select #orientationInput [value]="store.document().settings.orientation"
+      (change)="changeOrientation(orientationInput.value)">
+      <option value="portrait">Verticale</option>
+      <option value="landscape">Orizzontale</option>
+    </select>
+  </label>
+
+  <label>
+    Margine (mm)
+
+    <input #marginInput class="margin-input" type="number" min="0" max="50" step="1"
+      [value]="store.document().settings.marginMm" (change)="changeMargin(marginInput)" />
+  </label>
+
+  <div class="project-actions">
+    <button type="button" (click)="saveProject()">
+      Salva Progetto
+    </button>
+
+    <button type="button" (click)="restoreProject()">
+      Ripristina Progetto
+    </button>
+
+    <button type="button" [disabled]="!store.canUndo()" (click)="store.undo()">
+      Annulla
+    </button>
+
+    <button type="button" [disabled]="!store.canRedo()" (click)="store.redo()">
+      Ripeti
+    </button>
+
+    <button type="button" (click)="store.addParagraph()">
+      Nuovo paragrafo
+    </button>
+
+    <button type="button" (click)="store.addHeading()">
+      Nuovo titolo
+    </button>
+  </div>
+</header>
+
+<p class="status-message" role="status">
+  {{ statusMessage() }}
+</p>
+
+<main class="workspace" aria-label="Area documento">
+  <div class="page-container">
+    <div class="page-info">
+      {{ store.pageSize().width }} ×
+      {{ store.pageSize().height }} mm
+    </div>
+
+
+    <section class="document-page" aria-label="Foglio del documento" [style.width.mm]="store.pageSize().width"
+      [style.min-height.mm]="store.pageSize().height" [style.padding.mm]="store.document().settings.marginMm">
+      @for (
+      block of store.document().blocks;
+      track block.id;
+      let index = $index;
+      let first = $first;
+      let last = $last
+      ) {
+      <div class="document-block">
+        <div class="block-toolbar">
+          <span class="block-label">
+            {{ block.type === 'heading' ? 'Titolo' : 'Paragrafo' }}
+            {{ index + 1 }}
+          </span>
+
+          @if (block.type === 'heading') {
+          <label class="heading-level-control">
+            Livello
+
+            <select #levelInput [value]="block.level" (change)="changeHeadingLevel(block.id, levelInput.value)">
+              <option value="1">H1</option>
+              <option value="2">H2</option>
+              <option value="3">H3</option>
+            </select>
+          </label>
+          }
+
+          <button type="button" [disabled]="first" [attr.aria-label]="'Sposta su il blocco ' + (index + 1)"
+            (click)="store.moveParagraph(block.id, -1)">
+            Su
+          </button>
+
+          <button type="button" [disabled]="last" [attr.aria-label]="'Sposta giù il blocco ' + (index + 1)"
+            (click)="store.moveParagraph(block.id, 1)">
+            Giù
+          </button>
+
+          <button type="button" class="delete-button" [attr.aria-label]="'Elimina il blocco ' + (index + 1)"
+            (click)="store.removeParagraph(block.id)">
+            Elimina
+          </button>
+        </div>
+
+        @if (block.type === 'heading') {
+        <textarea #headingInput class="heading-editor" rows="2" spellcheck="true" placeholder="Scrivi il titolo..."
+          [class.heading-level-1]="block.level === 1" [class.heading-level-2]="block.level === 2"
+          [class.heading-level-3]="block.level === 3" [attr.aria-label]="'Testo del titolo ' + (index + 1)"
+          [value]="block.text" (input)="store.updateBlockText(block.id, headingInput.value)"></textarea>
+        } @else {
+        <textarea #textInput class="paragraph-editor" rows="5" spellcheck="true"
+          placeholder="Scrivi il testo del paragrafo..." [attr.aria-label]="'Testo del paragrafo ' + (index + 1)"
+          [value]="block.text" (input)="store.updateBlockText(block.id, textInput.value)"></textarea>
+        }
+      </div>
+      } @empty {
+      <div class="empty-document">
+        <p>Il documento non contiene blocchi.</p>
+
+        <button type="button" (click)="store.addParagraph()">
+          Aggiungi un paragrafo
+        </button>
+
+        <button type="button" (click)="store.addHeading()">
+          Aggiungi un titolo
+        </button>
+      </div>
+      }
+    </section>
+
+    <p class="development-note">
+      Salvataggio manuale nel browser.
+      Paginazione automatica ed esportazione non sono ancora attive.
+    </p>
+  </div>
+</main>
+``
